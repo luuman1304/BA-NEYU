@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/camunda/skills/main/compatibility/portability.schema.json",
+  "skillDirectory": "skills/camunda-development",
+  "skillName": "camunda-development",
+  "status": "portable-with-adapter",
+  "agentSkillsSpec": {
+    "specUrl": "https://agentskills.io/specification",
+    "specRevisionOrAuditDate": "2026-09-11"
+  },
+  "harnesses": {
+    "claude": {
+      "status": "native",
+      "differences": [
+        "Loads the standard SKILL.md package and routes the decision to the named Camunda skill."
+      ]
+    },
+    "copilot": {
+      "status": "adapter-required",
+      "differences": [
+        "Maps repository inspection and the selected c8ctl or SDK workflow to Copilot terminal capabilities."
+      ]
+    },
+    "generic": {
+      "status": "adapter-required",
+      "differences": [
+        "The host supplies discovery of the focused skill and the tools required by the selected integration path."
+      ]
+    }
+  },
+  "limitations": [
+    "The decision matrix requires access to the Camunda tools and the language or runtime named by the selected path."
+  ],
+  "differences": [
+    "The routing rules are harness-neutral; the selected connector, worker, or cluster workflow still depends on host tool availability."
+  ]
+}

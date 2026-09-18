@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Element templates cache
+element-templates/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# waza
+results/
+.waza-cache/
+
+# Logs
+*.log
+
+# Eval suite local outputs
+evals/logs/
+# Maven build output from the CPT verifier projects
+**/cpt-verifier/target/
+.venv/
+.ruff_cache/
+**/__pycache__/

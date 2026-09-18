@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/camunda/skills/main/compatibility/portability.schema.json",
+  "skillDirectory": "skills/camunda-ai-agents",
+  "skillName": "camunda-ai-agents",
+  "status": "portable-with-adapter",
+  "agentSkillsSpec": {
+    "specUrl": "https://agentskills.io/specification",
+    "specRevisionOrAuditDate": "2026-09-11"
+  },
+  "harnesses": {
+    "claude": {
+      "status": "native",
+      "differences": [
+        "Loads the standard SKILL.md package and applies the documented BPMN and c8ctl workflow."
+      ]
+    },
+    "copilot": {
+      "status": "adapter-required",
+      "differences": [
+        "Maps connector-template application, file editing, and model/tool configuration to Copilot terminal capabilities."
+      ]
+    },
+    "generic": {
+      "status": "adapter-required",
+      "differences": [
+        "The host supplies LLM-provider credential and tool-call execution adapters for live processes."
+      ]
+    }
+  },
+  "limitations": [
+    "Live agent operations require c8ctl, a Camunda 8.8+ cluster, and a model-provider secret."
+  ],
+  "differences": [
+    "BPMN and connector configuration are harness-neutral; model-provider credentials and tool execution are host-managed."
+  ]
+}

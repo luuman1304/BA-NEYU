@@ -1,0 +1,17 @@
+{
+  "name": "camunda-skills",
+  "version": "1.0.0",
+  "description": "Official Camunda skills for AI-assisted Camunda 8 development",
+  "owner": {
+    "name": "Camunda",
+    "url": "https://camunda.com"
+  },
+  "plugins": [
+    {
+      "name": "camunda-skills",
+      "source": "./",
+      "description": "Camunda 8 development skills — c8ctl CLI setup, BPMN modeling, FEEL expressions, forms, connectors, process management, and AI agents",
+      "version": "1.0.0"
+    }
+  ]
+}

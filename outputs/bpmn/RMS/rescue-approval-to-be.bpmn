@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_RescueApproval" targetNamespace="http://bpmn.io/schema/bpmn" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
+  <bpmn:collaboration id="Collaboration_RescueApproval">
+    <bpmn:participant id="Participant_RMS" name="RMS Rescue Approval" processRef="RescueApprovalProcess" />
+  </bpmn:collaboration>
+  <bpmn:process id="RescueApprovalProcess" name="Rescue Approval" isExecutable="true">
+    <bpmn:laneSet id="LaneSet_RescueApproval">
+      <bpmn:lane id="Lane_CS" name="CS">
+        <bpmn:flowNodeRef>StartEvent_1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SubmitRescueJob</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CreateApprovalRecord</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_TeamLeader" name="Team Leader">
+        <bpmn:flowNodeRef>Task_TeamLeaderReview</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Boundary_CancelTL</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_TLApproved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Rejected1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Cancelled1</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_QA" name="QA">
+        <bpmn:flowNodeRef>Task_QAReview</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Boundary_CancelQA</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_QAApproved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Approved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Rejected2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Cancelled2</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_1" name="Start">
+      <bpmn:outgoing>Flow_StartToSubmit</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_SubmitRescueJob" name="Submit Rescue Job for Approval">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:assignmentDefinition candidateGroups="cs-agents" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_StartToSubmit</bpmn:incoming>
+      <bpmn:outgoing>Flow_SubmitToCreate</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Task_CreateApprovalRecord" name="Create Approval Rescue Record">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="create-approval-rescue-record" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_SubmitToCreate</bpmn:incoming>
+      <bpmn:outgoing>Flow_CreateToTLReview</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Task_TeamLeaderReview" name="Team Leader Reviews Approval Rescue">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:assignmentDefinition candidateGroups="team-leaders" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_CreateToTLReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_TLReviewToGateway</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:boundaryEvent id="Boundary_CancelTL" name="Cancel Requested" attachedToRef="Task_TeamLeaderReview">
+      <bpmn:messageEventDefinition messageRef="Message_CancelApproval" />
+      <bpmn:outgoing>Flow_TLCancelToEnd</bpmn:outgoing>
+    </bpmn:boundaryEvent>
+    <bpmn:exclusiveGateway id="Gateway_TLApproved" name="Team Leader Approved?" default="Flow_TLReject">
+      <bpmn:incoming>Flow_TLReviewToGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_TLApprove</bpmn:outgoing>
+      <bpmn:outgoing>Flow_TLReject</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_QAReview" name="QA Reviews Approval Rescue">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:assignmentDefinition candidateGroups="qa" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_TLApprove</bpmn:incoming>
+      <bpmn:outgoing>Flow_QAReviewToGateway</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:boundaryEvent id="Boundary_CancelQA" name="Cancel Requested" attachedToRef="Task_QAReview">
+      <bpmn:messageEventDefinition messageRef="Message_CancelApproval" />
+      <bpmn:outgoing>Flow_QACancelToEnd</bpmn:outgoing>
+    </bpmn:boundaryEvent>
+    <bpmn:exclusiveGateway id="Gateway_QAApproved" name="QA Approved?" default="Flow_QAReject">
+      <bpmn:incoming>Flow_QAReviewToGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_QAApprove</bpmn:outgoing>
+      <bpmn:outgoing>Flow_QAReject</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_Approved" name="Approved">
+      <bpmn:incoming>Flow_QAApprove</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Rejected1" name="Rejected">
+      <bpmn:incoming>Flow_TLReject</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Rejected2" name="Rejected">
+      <bpmn:incoming>Flow_QAReject</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Cancelled1" name="Cancelled">
+      <bpmn:incoming>Flow_TLCancelToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Cancelled2" name="Cancelled">
+      <bpmn:incoming>Flow_QACancelToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_StartToSubmit" sourceRef="StartEvent_1" targetRef="Task_SubmitRescueJob" />
+    <bpmn:sequenceFlow id="Flow_SubmitToCreate" sourceRef="Task_SubmitRescueJob" targetRef="Task_CreateApprovalRecord" />
+    <bpmn:sequenceFlow id="Flow_CreateToTLReview" sourceRef="Task_CreateApprovalRecord" targetRef="Task_TeamLeaderReview" />
+    <bpmn:sequenceFlow id="Flow_TLReviewToGateway" sourceRef="Task_TeamLeaderReview" targetRef="Gateway_TLApproved" />
+    <bpmn:sequenceFlow id="Flow_TLApprove" name="Approve" sourceRef="Gateway_TLApproved" targetRef="Task_QAReview">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=teamLeaderDecision = "APPROVED"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_TLReject" name="Reject" sourceRef="Gateway_TLApproved" targetRef="End_Rejected1" />
+    <bpmn:sequenceFlow id="Flow_QAReviewToGateway" sourceRef="Task_QAReview" targetRef="Gateway_QAApproved" />
+    <bpmn:sequenceFlow id="Flow_QAApprove" name="Approve" sourceRef="Gateway_QAApproved" targetRef="End_Approved">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=qaDecision = "APPROVED"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_QAReject" name="Reject" sourceRef="Gateway_QAApproved" targetRef="End_Rejected2" />
+    <bpmn:sequenceFlow id="Flow_TLCancelToEnd" sourceRef="Boundary_CancelTL" targetRef="End_Cancelled1" />
+    <bpmn:sequenceFlow id="Flow_QACancelToEnd" sourceRef="Boundary_CancelQA" targetRef="End_Cancelled2" />
+  </bpmn:process>
+  <bpmn:message id="Message_CancelApproval" name="cancel-approval-rescue">
+    <bpmn:extensionElements>
+      <zeebe:subscription correlationKey="=approvalRescueId" />
+    </bpmn:extensionElements>
+  </bpmn:message>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_RescueApproval">
+      <bpmndi:BPMNShape id="Participant_RMS_di" bpmnElement="Participant_RMS" isHorizontal="true">
+        <dc:Bounds x="0" y="0" width="1440" height="640" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_CS_di" bpmnElement="Lane_CS" isHorizontal="true">
+        <dc:Bounds x="30" y="0" width="1410" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_TeamLeader_di" bpmnElement="Lane_TeamLeader" isHorizontal="true">
+        <dc:Bounds x="30" y="200" width="1410" height="220" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_QA_di" bpmnElement="Lane_QA" isHorizontal="true">
+        <dc:Bounds x="30" y="420" width="1410" height="220" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="160" y="82" width="36" height="36" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SubmitRescueJob_di" bpmnElement="Task_SubmitRescueJob">
+        <dc:Bounds x="260" y="60" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CreateApprovalRecord_di" bpmnElement="Task_CreateApprovalRecord">
+        <dc:Bounds x="460" y="60" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_TeamLeaderReview_di" bpmnElement="Task_TeamLeaderReview">
+        <dc:Bounds x="660" y="270" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Boundary_CancelTL_di" bpmnElement="Boundary_CancelTL">
+        <dc:Bounds x="692" y="332" width="36" height="36" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_TLApproved_di" bpmnElement="Gateway_TLApproved" isMarkerVisible="true">
+        <dc:Bounds x="860" y="285" width="50" height="50" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Rejected1_di" bpmnElement="End_Rejected1">
+        <dc:Bounds x="867" y="370" width="36" height="36" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Cancelled1_di" bpmnElement="End_Cancelled1">
+        <dc:Bounds x="692" y="370" width="36" height="36" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_QAReview_di" bpmnElement="Task_QAReview">
+        <dc:Bounds x="1060" y="490" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Boundary_CancelQA_di" bpmnElement="Boundary_CancelQA">
+        <dc:Bounds x="1092" y="552" width="36" height="36" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_QAApproved_di" bpmnElement="Gateway_QAApproved" isMarkerVisible="true">
+        <dc:Bounds x="1260" y="505" width="50" height="50" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Approved_di" bpmnElement="End_Approved">
+        <dc:Bounds x="1360" y="512" width="36" height="36" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Rejected2_di" bpmnElement="End_Rejected2">
+        <dc:Bounds x="1267" y="590" width="36" height="36" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Cancelled2_di" bpmnElement="End_Cancelled2">
+        <dc:Bounds x="1092" y="590" width="36" height="36" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_StartToSubmit_di" bpmnElement="Flow_StartToSubmit">
+        <di:waypoint x="196" y="100" />
+        <di:waypoint x="260" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SubmitToCreate_di" bpmnElement="Flow_SubmitToCreate">
+        <di:waypoint x="360" y="100" />
+        <di:waypoint x="460" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CreateToTLReview_di" bpmnElement="Flow_CreateToTLReview">
+        <di:waypoint x="560" y="100" />
+        <di:waypoint x="590" y="100" />
+        <di:waypoint x="590" y="310" />
+        <di:waypoint x="660" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TLReviewToGateway_di" bpmnElement="Flow_TLReviewToGateway">
+        <di:waypoint x="760" y="310" />
+        <di:waypoint x="860" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TLApprove_di" bpmnElement="Flow_TLApprove">
+        <di:waypoint x="910" y="310" />
+        <di:waypoint x="985" y="310" />
+        <di:waypoint x="985" y="530" />
+        <di:waypoint x="1060" y="530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TLReject_di" bpmnElement="Flow_TLReject">
+        <di:waypoint x="885" y="335" />
+        <di:waypoint x="885" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TLCancelToEnd_di" bpmnElement="Flow_TLCancelToEnd">
+        <di:waypoint x="710" y="368" />
+        <di:waypoint x="710" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_QAReviewToGateway_di" bpmnElement="Flow_QAReviewToGateway">
+        <di:waypoint x="1160" y="530" />
+        <di:waypoint x="1260" y="530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_QAApprove_di" bpmnElement="Flow_QAApprove">
+        <di:waypoint x="1310" y="530" />
+        <di:waypoint x="1360" y="530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_QAReject_di" bpmnElement="Flow_QAReject">
+        <di:waypoint x="1285" y="555" />
+        <di:waypoint x="1285" y="590" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_QACancelToEnd_di" bpmnElement="Flow_QACancelToEnd">
+        <di:waypoint x="1110" y="588" />
+        <di:waypoint x="1110" y="590" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/camunda/skills/main/compatibility/portability.schema.json",
+  "skillDirectory": "skills/camunda-c8ctl",
+  "skillName": "camunda-c8ctl",
+  "status": "portable-with-adapter",
+  "agentSkillsSpec": {
+    "specUrl": "https://agentskills.io/specification",
+    "specRevisionOrAuditDate": "2026-09-11"
+  },
+  "harnesses": {
+    "claude": {
+      "status": "native",
+      "differences": [
+        "Loads the standard SKILL.md package and invokes c8ctl through the host terminal."
+      ]
+    },
+    "copilot": {
+      "status": "adapter-required",
+      "differences": [
+        "Maps c8ctl process execution, profile selection, and secret setup to Copilot terminal capabilities."
+      ]
+    },
+    "generic": {
+      "status": "adapter-required",
+      "differences": [
+        "The host supplies terminal, environment-variable, and credential adapters for c8ctl."
+      ]
+    }
+  },
+  "limitations": [
+    "Cluster and profile operations require c8ctl 3.0.0 or newer, Node.js 22.18.0 or newer, and credentials for remote clusters."
+  ],
+  "differences": [
+    "The c8ctl command surface is stable across harnesses; profile storage, environment variables, and process lifecycle are host-managed."
+  ]
+}

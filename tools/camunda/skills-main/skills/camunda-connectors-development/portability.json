@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/camunda/skills/main/compatibility/portability.schema.json",
+  "skillDirectory": "skills/camunda-connectors-development",
+  "skillName": "camunda-connectors-development",
+  "status": "portable-with-adapter",
+  "agentSkillsSpec": {
+    "specUrl": "https://agentskills.io/specification",
+    "specRevisionOrAuditDate": "2026-09-11"
+  },
+  "harnesses": {
+    "claude": {
+      "status": "native",
+      "differences": [
+        "Loads the standard SKILL.md package and follows the JSON-template or Java SDK path."
+      ]
+    },
+    "copilot": {
+      "status": "adapter-required",
+      "differences": [
+        "Maps c8ctl template retrieval, Java/Maven commands, and project file edits to Copilot terminal capabilities."
+      ]
+    },
+    "generic": {
+      "status": "adapter-required",
+      "differences": [
+        "The host supplies Java, Maven, filesystem, and connector-runtime adapters for Path B."
+      ]
+    }
+  },
+  "limitations": [
+    "Java connector builds require Java 17 or newer, Maven 3.8+ or an equivalent Gradle toolchain, and a connector runtime or hosting target."
+  ],
+  "differences": [
+    "Template and SDK semantics are harness-neutral; build, dependency-cache, and hosting commands depend on host capabilities."
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/camunda/skills/main/compatibility/portability.schema.json",
+  "skillDirectory": "skills/camunda-forms",
+  "skillName": "camunda-forms",
+  "status": "portable-with-adapter",
+  "agentSkillsSpec": {
+    "specUrl": "https://agentskills.io/specification",
+    "specRevisionOrAuditDate": "2026-09-11"
+  },
+  "harnesses": {
+    "claude": {
+      "status": "native",
+      "differences": [
+        "Loads the standard SKILL.md package and edits the portable .form JSON artifact."
+      ]
+    },
+    "copilot": {
+      "status": "adapter-required",
+      "differences": [
+        "Maps JSON editing, schema validation, and optional c8ctl checks to Copilot terminal capabilities."
+      ]
+    },
+    "generic": {
+      "status": "adapter-required",
+      "differences": [
+        "The host supplies JSON editing and validation tools; BPMN linking remains an explicit cross-skill step."
+      ]
+    }
+  },
+  "limitations": [
+    "Form validation requires a JSON-aware editor or validator and a Camunda 8.8+ BPMN project for live linking."
+  ],
+  "differences": [
+    "Form JSON is portable; editor previews, schema checks, and FEEL evaluation depend on host-provided tooling."
+  ]
+}

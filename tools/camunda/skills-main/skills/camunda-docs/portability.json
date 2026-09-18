@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/camunda/skills/main/compatibility/portability.schema.json",
+  "skillDirectory": "skills/camunda-docs",
+  "skillName": "camunda-docs",
+  "status": "portable-with-adapter",
+  "agentSkillsSpec": {
+    "specUrl": "https://agentskills.io/specification",
+    "specRevisionOrAuditDate": "2026-09-11"
+  },
+  "harnesses": {
+    "claude": {
+      "status": "native",
+      "differences": [
+        "Loads the standard SKILL.md package and can use the MCP path or the bundled Algolia script."
+      ]
+    },
+    "copilot": {
+      "status": "adapter-required",
+      "differences": [
+        "MCP server registration is harness-specific; the bundled curl and jq search script is the portable fallback."
+      ]
+    },
+    "generic": {
+      "status": "adapter-required",
+      "differences": [
+        "The host must provide HTTP retrieval and optionally an MCP client; script-based search remains available."
+      ]
+    }
+  },
+  "limitations": [
+    "Current Camunda behavior depends on network access to the official documentation source or a current local cache."
+  ],
+  "differences": [
+    "The MCP and Algolia paths return different result shapes, so the skill normalizes both to source-backed documentation lookup."
+  ]
+}

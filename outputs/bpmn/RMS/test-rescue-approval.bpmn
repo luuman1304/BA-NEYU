@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_TestRescueApproval" targetNamespace="http://bpmn.io/schema/bpmn" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
+  <bpmn:process id="TestRescueApprovalProcess" name="Test Rescue Approval Process" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Start">
+      <bpmn:outgoing>Flow_StartToSubmit</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_SubmitRequest" name="CS Agent submits request">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:assignmentDefinition candidateGroups="cs-agents" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_StartToSubmit</bpmn:incoming>
+      <bpmn:outgoing>Flow_SubmitToReview</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_ReviewRequest" name="Team Leader reviews request">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:assignmentDefinition candidateGroups="team-leaders" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_SubmitToReview</bpmn:incoming>
+      <bpmn:outgoing>Flow_ReviewToGateway</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_Approved" name="Approved?" default="Flow_GatewayToRejected1">
+      <bpmn:incoming>Flow_ReviewToGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_GatewayToQA</bpmn:outgoing>
+      <bpmn:outgoing>Flow_GatewayToRejected1</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="Task_QAReview" name="QA reviews request">
+      <bpmn:extensionElements>
+        <zeebe:userTask />
+        <zeebe:assignmentDefinition candidateGroups="qa" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_GatewayToQA</bpmn:incoming>
+      <bpmn:outgoing>Flow_QAToGateway2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="Gateway_QAApproved" name="QA approved?" default="Flow_Gateway2ToRejected2">
+      <bpmn:incoming>Flow_QAToGateway2</bpmn:incoming>
+      <bpmn:outgoing>Flow_Gateway2ToApproved</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Gateway2ToRejected2</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_Approved" name="Approved">
+      <bpmn:incoming>Flow_Gateway2ToApproved</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Rejected1" name="Rejected">
+      <bpmn:incoming>Flow_GatewayToRejected1</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_Rejected2" name="Rejected">
+      <bpmn:incoming>Flow_Gateway2ToRejected2</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_StartToSubmit" sourceRef="StartEvent_1" targetRef="Task_SubmitRequest" />
+    <bpmn:sequenceFlow id="Flow_SubmitToReview" sourceRef="Task_SubmitRequest" targetRef="Task_ReviewRequest" />
+    <bpmn:sequenceFlow id="Flow_ReviewToGateway" sourceRef="Task_ReviewRequest" targetRef="Gateway_Approved" />
+    <bpmn:sequenceFlow id="Flow_GatewayToQA" name="Yes" sourceRef="Gateway_Approved" targetRef="Task_QAReview">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=approved = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_GatewayToRejected1" name="No" sourceRef="Gateway_Approved" targetRef="End_Rejected1" />
+    <bpmn:sequenceFlow id="Flow_QAToGateway2" sourceRef="Task_QAReview" targetRef="Gateway_QAApproved" />
+    <bpmn:sequenceFlow id="Flow_Gateway2ToApproved" name="Yes" sourceRef="Gateway_QAApproved" targetRef="End_Approved">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=qaApproved = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Gateway2ToRejected2" name="No" sourceRef="Gateway_QAApproved" targetRef="End_Rejected2" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="TestRescueApprovalProcess">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="152" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SubmitRequest_di" bpmnElement="Task_SubmitRequest">
+        <dc:Bounds x="240" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReviewRequest_di" bpmnElement="Task_ReviewRequest">
+        <dc:Bounds x="440" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Approved_di" bpmnElement="Gateway_Approved" isMarkerVisible="true">
+        <dc:Bounds x="640" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_QAReview_di" bpmnElement="Task_QAReview">
+        <dc:Bounds x="740" y="80" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_QAApproved_di" bpmnElement="Gateway_QAApproved" isMarkerVisible="true">
+        <dc:Bounds x="940" y="95" width="50" height="50" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Approved_di" bpmnElement="End_Approved">
+        <dc:Bounds x="1140" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Rejected1_di" bpmnElement="End_Rejected1">
+        <dc:Bounds x="647" y="250" width="36" height="36" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Rejected2_di" bpmnElement="End_Rejected2">
+        <dc:Bounds x="947" y="250" width="36" height="36" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_StartToSubmit_di" bpmnElement="Flow_StartToSubmit">
+        <di:waypoint x="188" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SubmitToReview_di" bpmnElement="Flow_SubmitToReview">
+        <di:waypoint x="340" y="120" />
+        <di:waypoint x="440" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ReviewToGateway_di" bpmnElement="Flow_ReviewToGateway">
+        <di:waypoint x="540" y="120" />
+        <di:waypoint x="640" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_GatewayToQA_di" bpmnElement="Flow_GatewayToQA">
+        <di:waypoint x="690" y="120" />
+        <di:waypoint x="740" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_GatewayToRejected1_di" bpmnElement="Flow_GatewayToRejected1">
+        <di:waypoint x="665" y="145" />
+        <di:waypoint x="665" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_QAToGateway2_di" bpmnElement="Flow_QAToGateway2">
+        <di:waypoint x="840" y="120" />
+        <di:waypoint x="940" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Gateway2ToApproved_di" bpmnElement="Flow_Gateway2ToApproved">
+        <di:waypoint x="990" y="120" />
+        <di:waypoint x="1140" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Gateway2ToRejected2_di" bpmnElement="Flow_Gateway2ToRejected2">
+        <di:waypoint x="965" y="145" />
+        <di:waypoint x="965" y="250" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

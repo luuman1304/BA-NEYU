@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/camunda/skills/main/compatibility/portability.schema.json",
+  "skillDirectory": "skills/camunda-bpmn",
+  "skillName": "camunda-bpmn",
+  "status": "portable-with-adapter",
+  "agentSkillsSpec": {
+    "specUrl": "https://agentskills.io/specification",
+    "specRevisionOrAuditDate": "2026-09-11"
+  },
+  "harnesses": {
+    "claude": {
+      "status": "native",
+      "differences": [
+        "Loads the standard SKILL.md package and runs the documented c8ctl BPMN workflow."
+      ]
+    },
+    "copilot": {
+      "status": "adapter-required",
+      "differences": [
+        "Maps BPMN file editing plus c8ctl bpmn lint and format commands to Copilot terminal capabilities."
+      ]
+    },
+    "generic": {
+      "status": "adapter-required",
+      "differences": [
+        "The host supplies filesystem and c8ctl process adapters for authoring and validation."
+      ]
+    }
+  },
+  "limitations": [
+    "Basic BPMN linting requires c8ctl 3.0.0 or newer; the documented bpmn format workflow requires c8ctl 3.2.0 or newer, plus a BPMN-aware project workspace."
+  ],
+  "differences": [
+    "BPMN XML and c8ctl command syntax are harness-neutral; file editing and command execution depend on host capabilities."
+  ]
+}

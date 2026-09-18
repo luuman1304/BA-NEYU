@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/camunda/skills/main/compatibility/portability.schema.json",
+  "skillDirectory": "skills/camunda-job-workers",
+  "skillName": "camunda-job-workers",
+  "status": "portable-with-adapter",
+  "agentSkillsSpec": {
+    "specUrl": "https://agentskills.io/specification",
+    "specRevisionOrAuditDate": "2026-09-11"
+  },
+  "harnesses": {
+    "claude": {
+      "status": "native",
+      "differences": [
+        "Loads the standard SKILL.md package and selects the documented Java, Spring, or TypeScript worker path."
+      ]
+    },
+    "copilot": {
+      "status": "adapter-required",
+      "differences": [
+        "Maps source editing, SDK dependency commands, and worker process execution to Copilot terminal capabilities."
+      ]
+    },
+    "generic": {
+      "status": "adapter-required",
+      "differences": [
+        "The host supplies the selected language runtime, build tool, and Camunda cluster credential adapters."
+      ]
+    }
+  },
+  "limitations": [
+    "Java and Spring worker implementations target a reachable Camunda 8.8+ cluster. The @camunda8/orchestration-cluster-api TypeScript path requires Camunda 8.9+, while the Node-only @camunda8/sdk remains the documented fallback for gRPC streaming, Camunda 8.7-or-earlier targets, Operate v1 queries, or migration friction; browser-hosted workers cannot use that fallback."
+  ],
+  "differences": [
+    "Worker handler semantics are harness-neutral; SDK installation, build, process control, and cluster credentials are host-managed."
+  ]
+}

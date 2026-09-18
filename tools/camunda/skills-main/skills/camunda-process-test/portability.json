@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/camunda/skills/main/compatibility/portability.schema.json",
+  "skillDirectory": "skills/camunda-process-test",
+  "skillName": "camunda-process-test",
+  "status": "portable-with-adapter",
+  "agentSkillsSpec": {
+    "specUrl": "https://agentskills.io/specification",
+    "specRevisionOrAuditDate": "2026-09-11"
+  },
+  "harnesses": {
+    "claude": {
+      "status": "native",
+      "differences": [
+        "Loads the standard SKILL.md package and follows the segment-planning and coverage-report workflow."
+      ]
+    },
+    "copilot": {
+      "status": "adapter-required",
+      "differences": [
+        "Maps Maven, Docker, source editing, and coverage-report commands to Copilot terminal capabilities."
+      ]
+    },
+    "generic": {
+      "status": "adapter-required",
+      "differences": [
+        "The host supplies Java, Maven, Docker, and test-report adapters for the embedded engine."
+      ]
+    }
+  },
+  "limitations": [
+    "Process tests require Camunda Process Test 8.8+, Java 21+, Maven, Docker, and a test project with the referenced resources; the instruction-based .test.json workflow requires 8.9+."
+  ],
+  "differences": [
+    "Scenario and coverage semantics are harness-neutral; Java/Maven execution, Docker lifecycle, and report collection are host-managed."
+  ]
+}
