@@ -1,0 +1,709 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_RescueJobLifecycle" targetNamespace="http://bpmn.io/schema/bpmn" exporter="BA AI Agent" exporterVersion="1.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.8.0">
+  <bpmn:collaboration id="Collaboration_RescueJobLifecycle">
+    <bpmn:participant id="Participant_RMS" name="RMS (Rescue Management System)" processRef="Process_RMS" />
+    <bpmn:participant id="Participant_TMS" name="TMS (Accountant - Payment Confirmation)" processRef="Process_TMS" />
+    <bpmn:messageFlow id="MessageFlow_RequestPayment" name="Request payment confirmation" sourceRef="Event_ThrowRequestPayment" targetRef="Event_MsgStartPaymentRequest" />
+    <bpmn:messageFlow id="MessageFlow_PaymentConfirmed" name="Payment confirmed" sourceRef="Event_MsgEndPaymentConfirmed" targetRef="Event_CatchPaymentConfirmed" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_RMS" name="Rescue Job Lifecycle (RMS)" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_RMS">
+      <bpmn:lane id="Lane_Scheduler" name="System / Scheduler">
+        <bpmn:flowNodeRef>StartEvent_PackedSLA</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>StartEvent_ReadyPickSLA</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>StartEvent_DeliveryFailed</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_GuardCheck</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AutoCreate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ForkMain</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_G2</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AutoAssign</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_AutoCreateApproval</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_CatchPaymentConfirmed</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CreateUpdateSO</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_ApprovedResolved</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_G7</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_RescueSuccess</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_SalesCantRescue</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_SysAdmin" name="System Admin">
+        <bpmn:flowNodeRef>StartEvent_AdminConfig</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ConfigMode</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_CSAgent" name="CS Agent">
+        <bpmn:flowNodeRef>Task_OpenUpdate</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_G3</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Refused</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SelectOption</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_G4</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_ApprovalAction</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CancelApproval</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Cancelled</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ResubmitApproval</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_TeamLeader" name="Team Leader">
+        <bpmn:flowNodeRef>Task_ManualAssign</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_TLReview</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_G5</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_FinalRejected</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_QA" name="QA">
+        <bpmn:flowNodeRef>Task_QAReview</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_G6</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_G6b</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_ThrowRequestPayment</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_PackedSLA" name="Packed Time + SLA reached">
+      <bpmn:outgoing>Flow_PackedSLA_ToGuard</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:startEvent id="StartEvent_ReadyPickSLA" name="Ready to Pick Time + SLA reached (CO)">
+      <bpmn:outgoing>Flow_ReadyPickSLA_ToGuard</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:startEvent id="StartEvent_DeliveryFailed" name="DO Status = Delivery Failed">
+      <bpmn:outgoing>Flow_DeliveryFailed_ToGuard</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Task_GuardCheck" name="Check duplicate &amp; DO-status guard (no existing Rescue Job; DO not Delivered/Returned/Canceled)">
+      <bpmn:incoming>Flow_PackedSLA_ToGuard</bpmn:incoming>
+      <bpmn:incoming>Flow_ReadyPickSLA_ToGuard</bpmn:incoming>
+      <bpmn:incoming>Flow_DeliveryFailed_ToGuard</bpmn:incoming>
+      <bpmn:outgoing>Flow_Guard_ToAutoCreate</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_AutoCreate" name="Auto-create Rescue Job + log creation-trigger history">
+      <bpmn:incoming>Flow_Guard_ToAutoCreate</bpmn:incoming>
+      <bpmn:outgoing>Flow_AutoCreate_ToFork</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:parallelGateway id="Gateway_ForkMain" name="Case processing and delivery-outcome monitoring proceed independently">
+      <bpmn:incoming>Flow_AutoCreate_ToFork</bpmn:incoming>
+      <bpmn:outgoing>Flow_Fork_ToG2</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Fork_ToG7</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:exclusiveGateway id="Gateway_G2" name="Distribution Mode?" default="Flow_G2_Auto">
+      <bpmn:incoming>Flow_Fork_ToG2</bpmn:incoming>
+      <bpmn:incoming>Flow_ConfigMode_ToG2</bpmn:incoming>
+      <bpmn:outgoing>Flow_G2_Auto</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G2_Manual</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="Task_AutoAssign" name="Auto-assign one job to CS Agent (priority-ranked) when agent opens My Rescue">
+      <bpmn:incoming>Flow_G2_Auto</bpmn:incoming>
+      <bpmn:outgoing>Flow_AutoAssign_ToOpen</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_AutoCreateApproval" name="Auto-create Approval Rescue request">
+      <bpmn:incoming>Flow_G4_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_AutoCreateApproval_ToAction</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:intermediateCatchEvent id="Event_CatchPaymentConfirmed" name="Payment confirmed (from TMS)">
+      <bpmn:incoming>Flow_Throw_ToCatch</bpmn:incoming>
+      <bpmn:outgoing>Flow_Catch_ToCreateSO</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_Catch" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:task id="Task_CreateUpdateSO" name="Create/Update SO (Option A: new SO / Option B: update existing SO)">
+      <bpmn:incoming>Flow_G6b_No</bpmn:incoming>
+      <bpmn:incoming>Flow_Catch_ToCreateSO</bpmn:incoming>
+      <bpmn:outgoing>Flow_CreateSO_ToEnd</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="EndEvent_ApprovedResolved" name="Approved / Resolved">
+      <bpmn:incoming>Flow_CreateSO_ToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="Gateway_G7" name="DO final delivery outcome?" default="Flow_G7_Delivered">
+      <bpmn:incoming>Flow_Fork_ToG7</bpmn:incoming>
+      <bpmn:outgoing>Flow_G7_Delivered</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G7_Returned</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="EndEvent_RescueSuccess" name="Rescue Success">
+      <bpmn:incoming>Flow_G7_Delivered</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_SalesCantRescue" name="Sales Can't Rescue">
+      <bpmn:incoming>Flow_G7_Returned</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:startEvent id="StartEvent_AdminConfig" name="Admin sets/changes Distribution Mode">
+      <bpmn:outgoing>Flow_AdminStart_ToConfigMode</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Task_ConfigMode" name="Configure Distribution Mode (Manual/Auto)">
+      <bpmn:incoming>Flow_AdminStart_ToConfigMode</bpmn:incoming>
+      <bpmn:outgoing>Flow_ConfigMode_ToG2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_OpenUpdate" name="Open Rescue Job and update CS Status/Sub-status per customer contact outcome">
+      <bpmn:incoming>Flow_AutoAssign_ToOpen</bpmn:incoming>
+      <bpmn:incoming>Flow_ManualAssign_ToOpen</bpmn:incoming>
+      <bpmn:incoming>Flow_G3_Uncontactable</bpmn:incoming>
+      <bpmn:incoming>Flow_G3_Unreachable</bpmn:incoming>
+      <bpmn:incoming>Flow_G3_NeedConvincing</bpmn:incoming>
+      <bpmn:incoming>Flow_G3_WrongStatus</bpmn:incoming>
+      <bpmn:outgoing>Flow_Open_ToG3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_G3" name="Contact outcome / sub-status?" default="Flow_G3_RequestApproval">
+      <bpmn:incoming>Flow_Open_ToG3</bpmn:incoming>
+      <bpmn:outgoing>Flow_G3_Uncontactable</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G3_Unreachable</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G3_NeedConvincing</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G3_WrongStatus</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G3_CustomerRefused</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G3_RequestApproval</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="EndEvent_Refused" name="Sales Can't Rescue (Refused)">
+      <bpmn:incoming>Flow_G3_CustomerRefused</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:task id="Task_SelectOption" name="Select rescue option(s): Discount and/or Change to Bank Transfer; choose SO handling (Create New SO / Update Existing SO); save &amp; submit">
+      <bpmn:incoming>Flow_G3_RequestApproval</bpmn:incoming>
+      <bpmn:incoming>Flow_G4_No</bpmn:incoming>
+      <bpmn:incoming>Flow_Resubmit_ToSelect</bpmn:incoming>
+      <bpmn:outgoing>Flow_Select_ToG4</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_G4" name="Validation passes? (discount &lt;=10% cumulative, max 2/Lead, blocked if SO already Bank Transfer)" default="Flow_G4_Yes">
+      <bpmn:incoming>Flow_Select_ToG4</bpmn:incoming>
+      <bpmn:outgoing>Flow_G4_No</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G4_Yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_ApprovalAction" name="CS action on pending Approval Rescue?" default="Flow_Action_Proceed">
+      <bpmn:incoming>Flow_AutoCreateApproval_ToAction</bpmn:incoming>
+      <bpmn:outgoing>Flow_Action_Proceed</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Action_Cancel</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Action_Resubmit</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="Task_CancelApproval" name="Cancel pending approval (only while Processing)">
+      <bpmn:incoming>Flow_Action_Cancel</bpmn:incoming>
+      <bpmn:outgoing>Flow_Cancel_ToEnd</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="EndEvent_Cancelled" name="Cancelled">
+      <bpmn:incoming>Flow_Cancel_ToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:task id="Task_ResubmitApproval" name="Resubmit for Approval (only if none Processing and none approved-with-new-SO)">
+      <bpmn:incoming>Flow_Action_Resubmit</bpmn:incoming>
+      <bpmn:outgoing>Flow_Resubmit_ToSelect</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_ManualAssign" name="Manually assign Rescue Job to CS Agent">
+      <bpmn:incoming>Flow_G2_Manual</bpmn:incoming>
+      <bpmn:outgoing>Flow_ManualAssign_ToOpen</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_TLReview" name="Review Approval Rescue (own team only)">
+      <bpmn:incoming>Flow_Action_Proceed</bpmn:incoming>
+      <bpmn:outgoing>Flow_TLReview_ToG5</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_G5" name="Team Leader decision?" default="Flow_G5_Approve">
+      <bpmn:incoming>Flow_TLReview_ToG5</bpmn:incoming>
+      <bpmn:outgoing>Flow_G5_Reject</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G5_Approve</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="EndEvent_FinalRejected" name="Final Rejected">
+      <bpmn:incoming>Flow_G5_Reject</bpmn:incoming>
+      <bpmn:incoming>Flow_G6_Reject</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:task id="Task_QAReview" name="Final review of Approval Rescue">
+      <bpmn:incoming>Flow_G5_Approve</bpmn:incoming>
+      <bpmn:outgoing>Flow_QAReview_ToG6</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_G6" name="QA decision?" default="Flow_G6_Approve">
+      <bpmn:incoming>Flow_QAReview_ToG6</bpmn:incoming>
+      <bpmn:outgoing>Flow_G6_Reject</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G6_Approve</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_G6b" name="Payment method = Bank Transfer?" default="Flow_G6b_No">
+      <bpmn:incoming>Flow_G6_Approve</bpmn:incoming>
+      <bpmn:outgoing>Flow_G6b_No</bpmn:outgoing>
+      <bpmn:outgoing>Flow_G6b_Yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:intermediateThrowEvent id="Event_ThrowRequestPayment" name="Send payment confirmation request">
+      <bpmn:incoming>Flow_G6b_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_Throw_ToCatch</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_Throw" />
+    </bpmn:intermediateThrowEvent>
+    <bpmn:sequenceFlow id="Flow_PackedSLA_ToGuard" sourceRef="StartEvent_PackedSLA" targetRef="Task_GuardCheck" />
+    <bpmn:sequenceFlow id="Flow_ReadyPickSLA_ToGuard" sourceRef="StartEvent_ReadyPickSLA" targetRef="Task_GuardCheck" />
+    <bpmn:sequenceFlow id="Flow_DeliveryFailed_ToGuard" sourceRef="StartEvent_DeliveryFailed" targetRef="Task_GuardCheck" />
+    <bpmn:sequenceFlow id="Flow_Guard_ToAutoCreate" sourceRef="Task_GuardCheck" targetRef="Task_AutoCreate" />
+    <bpmn:sequenceFlow id="Flow_AutoCreate_ToFork" sourceRef="Task_AutoCreate" targetRef="Gateway_ForkMain" />
+    <bpmn:sequenceFlow id="Flow_Fork_ToG2" sourceRef="Gateway_ForkMain" targetRef="Gateway_G2" />
+    <bpmn:sequenceFlow id="Flow_Fork_ToG7" sourceRef="Gateway_ForkMain" targetRef="Gateway_G7" />
+    <bpmn:sequenceFlow id="Flow_AdminStart_ToConfigMode" sourceRef="StartEvent_AdminConfig" targetRef="Task_ConfigMode" />
+    <bpmn:sequenceFlow id="Flow_ConfigMode_ToG2" name="Mode configured (no stated default)" sourceRef="Task_ConfigMode" targetRef="Gateway_G2" />
+    <bpmn:sequenceFlow id="Flow_G2_Auto" name="Auto" sourceRef="Gateway_G2" targetRef="Task_AutoAssign" />
+    <bpmn:sequenceFlow id="Flow_G2_Manual" name="Manual" sourceRef="Gateway_G2" targetRef="Task_ManualAssign" />
+    <bpmn:sequenceFlow id="Flow_AutoAssign_ToOpen" sourceRef="Task_AutoAssign" targetRef="Task_OpenUpdate" />
+    <bpmn:sequenceFlow id="Flow_ManualAssign_ToOpen" sourceRef="Task_ManualAssign" targetRef="Task_OpenUpdate" />
+    <bpmn:sequenceFlow id="Flow_Open_ToG3" sourceRef="Task_OpenUpdate" targetRef="Gateway_G3" />
+    <bpmn:sequenceFlow id="Flow_G3_Uncontactable" name="Uncontactable" sourceRef="Gateway_G3" targetRef="Task_OpenUpdate" />
+    <bpmn:sequenceFlow id="Flow_G3_Unreachable" name="Unreachable" sourceRef="Gateway_G3" targetRef="Task_OpenUpdate" />
+    <bpmn:sequenceFlow id="Flow_G3_NeedConvincing" name="Need More Convincing" sourceRef="Gateway_G3" targetRef="Task_OpenUpdate" />
+    <bpmn:sequenceFlow id="Flow_G3_WrongStatus" name="Wrong Status / Resend to 3PL" sourceRef="Gateway_G3" targetRef="Task_OpenUpdate" />
+    <bpmn:sequenceFlow id="Flow_G3_CustomerRefused" name="Customer Refused" sourceRef="Gateway_G3" targetRef="EndEvent_Refused" />
+    <bpmn:sequenceFlow id="Flow_G3_RequestApproval" name="Request for Approval" sourceRef="Gateway_G3" targetRef="Task_SelectOption" />
+    <bpmn:sequenceFlow id="Flow_Select_ToG4" sourceRef="Task_SelectOption" targetRef="Gateway_G4" />
+    <bpmn:sequenceFlow id="Flow_G4_No" name="No (validation fails)" sourceRef="Gateway_G4" targetRef="Task_SelectOption" />
+    <bpmn:sequenceFlow id="Flow_G4_Yes" name="Yes" sourceRef="Gateway_G4" targetRef="Task_AutoCreateApproval" />
+    <bpmn:sequenceFlow id="Flow_AutoCreateApproval_ToAction" sourceRef="Task_AutoCreateApproval" targetRef="Gateway_ApprovalAction" />
+    <bpmn:sequenceFlow id="Flow_Action_Proceed" name="Proceed to review" sourceRef="Gateway_ApprovalAction" targetRef="Task_TLReview" />
+    <bpmn:sequenceFlow id="Flow_Action_Cancel" name="Cancel (while Processing)" sourceRef="Gateway_ApprovalAction" targetRef="Task_CancelApproval" />
+    <bpmn:sequenceFlow id="Flow_Action_Resubmit" name="Resubmit (none Processing &amp; none approved-with-new-SO)" sourceRef="Gateway_ApprovalAction" targetRef="Task_ResubmitApproval" />
+    <bpmn:sequenceFlow id="Flow_Cancel_ToEnd" sourceRef="Task_CancelApproval" targetRef="EndEvent_Cancelled" />
+    <bpmn:sequenceFlow id="Flow_Resubmit_ToSelect" sourceRef="Task_ResubmitApproval" targetRef="Task_SelectOption" />
+    <bpmn:sequenceFlow id="Flow_TLReview_ToG5" sourceRef="Task_TLReview" targetRef="Gateway_G5" />
+    <bpmn:sequenceFlow id="Flow_G5_Reject" name="Reject (with comment)" sourceRef="Gateway_G5" targetRef="EndEvent_FinalRejected" />
+    <bpmn:sequenceFlow id="Flow_G5_Approve" name="Approve" sourceRef="Gateway_G5" targetRef="Task_QAReview" />
+    <bpmn:sequenceFlow id="Flow_QAReview_ToG6" sourceRef="Task_QAReview" targetRef="Gateway_G6" />
+    <bpmn:sequenceFlow id="Flow_G6_Reject" name="Reject (with comment)" sourceRef="Gateway_G6" targetRef="EndEvent_FinalRejected" />
+    <bpmn:sequenceFlow id="Flow_G6_Approve" name="Approve" sourceRef="Gateway_G6" targetRef="Gateway_G6b" />
+    <bpmn:sequenceFlow id="Flow_G6b_No" name="No (not Bank Transfer)" sourceRef="Gateway_G6b" targetRef="Task_CreateUpdateSO" />
+    <bpmn:sequenceFlow id="Flow_G6b_Yes" name="Yes (Bank Transfer)" sourceRef="Gateway_G6b" targetRef="Event_ThrowRequestPayment" />
+    <bpmn:sequenceFlow id="Flow_Throw_ToCatch" sourceRef="Event_ThrowRequestPayment" targetRef="Event_CatchPaymentConfirmed" />
+    <bpmn:sequenceFlow id="Flow_Catch_ToCreateSO" sourceRef="Event_CatchPaymentConfirmed" targetRef="Task_CreateUpdateSO" />
+    <bpmn:sequenceFlow id="Flow_CreateSO_ToEnd" sourceRef="Task_CreateUpdateSO" targetRef="EndEvent_ApprovedResolved" />
+    <bpmn:sequenceFlow id="Flow_G7_Delivered" name="Delivered" sourceRef="Gateway_G7" targetRef="EndEvent_RescueSuccess" />
+    <bpmn:sequenceFlow id="Flow_G7_Returned" name="Returned / Canceled" sourceRef="Gateway_G7" targetRef="EndEvent_SalesCantRescue" />
+  </bpmn:process>
+  <bpmn:process id="Process_TMS" name="Payment Confirmation (TMS)" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_TMS">
+      <bpmn:lane id="Lane_Accountant" name="Accountant">
+        <bpmn:flowNodeRef>Event_MsgStartPaymentRequest</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ConfirmPayment</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Event_MsgEndPaymentConfirmed</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Event_MsgStartPaymentRequest" name="Payment confirmation requested">
+      <bpmn:outgoing>Flow_TMS_StartToConfirm</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_TMSStart" />
+    </bpmn:startEvent>
+    <bpmn:task id="Task_ConfirmPayment" name="Confirm payment in TMS">
+      <bpmn:incoming>Flow_TMS_StartToConfirm</bpmn:incoming>
+      <bpmn:outgoing>Flow_TMS_ConfirmToEnd</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="Event_MsgEndPaymentConfirmed" name="Payment confirmation sent">
+      <bpmn:incoming>Flow_TMS_ConfirmToEnd</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_TMSEnd" />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_TMS_StartToConfirm" sourceRef="Event_MsgStartPaymentRequest" targetRef="Task_ConfirmPayment" />
+    <bpmn:sequenceFlow id="Flow_TMS_ConfirmToEnd" sourceRef="Task_ConfirmPayment" targetRef="Event_MsgEndPaymentConfirmed" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_RescueJobLifecycle">
+      <bpmndi:BPMNShape id="Participant_RMS_di" bpmnElement="Participant_RMS" isHorizontal="true">
+        <dc:Bounds x="0" y="0" width="4320" height="1100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Scheduler_di" bpmnElement="Lane_Scheduler" isHorizontal="true">
+        <dc:Bounds x="30" y="0" width="4290" height="300" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_SysAdmin_di" bpmnElement="Lane_SysAdmin" isHorizontal="true">
+        <dc:Bounds x="30" y="300" width="4290" height="120" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_CSAgent_di" bpmnElement="Lane_CSAgent" isHorizontal="true">
+        <dc:Bounds x="30" y="420" width="4290" height="400" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_TeamLeader_di" bpmnElement="Lane_TeamLeader" isHorizontal="true">
+        <dc:Bounds x="30" y="820" width="4290" height="140" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_QA_di" bpmnElement="Lane_QA" isHorizontal="true">
+        <dc:Bounds x="30" y="960" width="4290" height="140" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_TMS_di" bpmnElement="Participant_TMS" isHorizontal="true">
+        <dc:Bounds x="0" y="1120" width="4320" height="140" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Accountant_di" bpmnElement="Lane_Accountant" isHorizontal="true">
+        <dc:Bounds x="30" y="1120" width="4290" height="140" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_PackedSLA_di" bpmnElement="StartEvent_PackedSLA">
+        <dc:Bounds x="100" y="80" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="60" y="118" width="116" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_ReadyPickSLA_di" bpmnElement="StartEvent_ReadyPickSLA">
+        <dc:Bounds x="100" y="140" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="42" y="178" width="152" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_DeliveryFailed_di" bpmnElement="StartEvent_DeliveryFailed">
+        <dc:Bounds x="100" y="200" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="52" y="238" width="132" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_GuardCheck_di" bpmnElement="Task_GuardCheck">
+        <dc:Bounds x="320" y="70" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AutoCreate_di" bpmnElement="Task_AutoCreate">
+        <dc:Bounds x="520" y="70" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ForkMain_di" bpmnElement="Gateway_ForkMain">
+        <dc:Bounds x="720" y="85" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_G2_di" bpmnElement="Gateway_G2" isMarkerVisible="true">
+        <dc:Bounds x="920" y="85" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="898" y="55" width="94" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AutoAssign_di" bpmnElement="Task_AutoAssign">
+        <dc:Bounds x="1120" y="70" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_AutoCreateApproval_di" bpmnElement="Task_AutoCreateApproval">
+        <dc:Bounds x="2180" y="70" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_CatchPaymentConfirmed_di" bpmnElement="Event_CatchPaymentConfirmed">
+        <dc:Bounds x="3800" y="92" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3762" y="130" width="112" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CreateUpdateSO_di" bpmnElement="Task_CreateUpdateSO">
+        <dc:Bounds x="4000" y="70" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ApprovedResolved_di" bpmnElement="EndEvent_ApprovedResolved">
+        <dc:Bounds x="4200" y="92" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4176" y="130" width="84" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_G7_di" bpmnElement="Gateway_G7" isMarkerVisible="true">
+        <dc:Bounds x="920" y="205" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="898" y="258" width="94" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_RescueSuccess_di" bpmnElement="EndEvent_RescueSuccess">
+        <dc:Bounds x="1080" y="212" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1058" y="250" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_SalesCantRescue_di" bpmnElement="EndEvent_SalesCantRescue">
+        <dc:Bounds x="1220" y="212" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1191" y="250" width="94" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_AdminConfig_di" bpmnElement="StartEvent_AdminConfig">
+        <dc:Bounds x="580" y="342" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="540" y="380" width="116" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ConfigMode_di" bpmnElement="Task_ConfigMode">
+        <dc:Bounds x="720" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_OpenUpdate_di" bpmnElement="Task_OpenUpdate">
+        <dc:Bounds x="1320" y="460" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_G3_di" bpmnElement="Gateway_G3" isMarkerVisible="true">
+        <dc:Bounds x="1520" y="475" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1498" y="528" width="94" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Refused_di" bpmnElement="EndEvent_Refused">
+        <dc:Bounds x="1680" y="482" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1638" y="520" width="120" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SelectOption_di" bpmnElement="Task_SelectOption">
+        <dc:Bounds x="1780" y="460" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_G4_di" bpmnElement="Gateway_G4" isMarkerVisible="true">
+        <dc:Bounds x="1980" y="475" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1955" y="418" width="100" height="53" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ApprovalAction_di" bpmnElement="Gateway_ApprovalAction" isMarkerVisible="true">
+        <dc:Bounds x="2380" y="595" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2358" y="648" width="94" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CancelApproval_di" bpmnElement="Task_CancelApproval">
+        <dc:Bounds x="2580" y="580" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Cancelled_di" bpmnElement="EndEvent_Cancelled">
+        <dc:Bounds x="2780" y="602" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2770" y="640" width="56" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ResubmitApproval_di" bpmnElement="Task_ResubmitApproval">
+        <dc:Bounds x="2580" y="700" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ManualAssign_di" bpmnElement="Task_ManualAssign">
+        <dc:Bounds x="1120" y="850" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_TLReview_di" bpmnElement="Task_TLReview">
+        <dc:Bounds x="2580" y="850" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_G5_di" bpmnElement="Gateway_G5" isMarkerVisible="true">
+        <dc:Bounds x="2780" y="865" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2758" y="918" width="94" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_FinalRejected_di" bpmnElement="EndEvent_FinalRejected">
+        <dc:Bounds x="2980" y="872" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2957" y="910" width="82" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_QAReview_di" bpmnElement="Task_QAReview">
+        <dc:Bounds x="2980" y="990" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_G6_di" bpmnElement="Gateway_G6" isMarkerVisible="true">
+        <dc:Bounds x="3180" y="1005" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3158" y="1058" width="94" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_G6b_di" bpmnElement="Gateway_G6b" isMarkerVisible="true">
+        <dc:Bounds x="3380" y="1005" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3355" y="1058" width="100" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_ThrowRequestPayment_di" bpmnElement="Event_ThrowRequestPayment">
+        <dc:Bounds x="3580" y="1012" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3543" y="1050" width="110" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_MsgStartPaymentRequest_di" bpmnElement="Event_MsgStartPaymentRequest">
+        <dc:Bounds x="3800" y="1172" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3760" y="1210" width="116" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ConfirmPayment_di" bpmnElement="Task_ConfirmPayment">
+        <dc:Bounds x="4000" y="1150" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_MsgEndPaymentConfirmed_di" bpmnElement="Event_MsgEndPaymentConfirmed">
+        <dc:Bounds x="4200" y="1172" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="4160" y="1210" width="116" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_PackedSLA_ToGuard_di" bpmnElement="Flow_PackedSLA_ToGuard">
+        <di:waypoint x="136" y="98" />
+        <di:waypoint x="230" y="98" />
+        <di:waypoint x="230" y="100" />
+        <di:waypoint x="320" y="100" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ReadyPickSLA_ToGuard_di" bpmnElement="Flow_ReadyPickSLA_ToGuard">
+        <di:waypoint x="136" y="158" />
+        <di:waypoint x="230" y="158" />
+        <di:waypoint x="230" y="110" />
+        <di:waypoint x="320" y="110" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DeliveryFailed_ToGuard_di" bpmnElement="Flow_DeliveryFailed_ToGuard">
+        <di:waypoint x="136" y="218" />
+        <di:waypoint x="230" y="218" />
+        <di:waypoint x="230" y="120" />
+        <di:waypoint x="320" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Guard_ToAutoCreate_di" bpmnElement="Flow_Guard_ToAutoCreate">
+        <di:waypoint x="420" y="110" />
+        <di:waypoint x="520" y="110" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AutoCreate_ToFork_di" bpmnElement="Flow_AutoCreate_ToFork">
+        <di:waypoint x="620" y="110" />
+        <di:waypoint x="720" y="110" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Fork_ToG2_di" bpmnElement="Flow_Fork_ToG2">
+        <di:waypoint x="770" y="110" />
+        <di:waypoint x="920" y="110" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Fork_ToG7_di" bpmnElement="Flow_Fork_ToG7">
+        <di:waypoint x="745" y="135" />
+        <di:waypoint x="745" y="230" />
+        <di:waypoint x="920" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AdminStart_ToConfigMode_di" bpmnElement="Flow_AdminStart_ToConfigMode">
+        <di:waypoint x="616" y="360" />
+        <di:waypoint x="720" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ConfigMode_ToG2_di" bpmnElement="Flow_ConfigMode_ToG2">
+        <di:waypoint x="820" y="360" />
+        <di:waypoint x="945" y="360" />
+        <di:waypoint x="945" y="135" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G2_Auto_di" bpmnElement="Flow_G2_Auto">
+        <di:waypoint x="970" y="110" />
+        <di:waypoint x="1120" y="110" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G2_Manual_di" bpmnElement="Flow_G2_Manual">
+        <di:waypoint x="945" y="135" />
+        <di:waypoint x="945" y="890" />
+        <di:waypoint x="1120" y="890" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AutoAssign_ToOpen_di" bpmnElement="Flow_AutoAssign_ToOpen">
+        <di:waypoint x="1170" y="150" />
+        <di:waypoint x="1170" y="500" />
+        <di:waypoint x="1320" y="500" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ManualAssign_ToOpen_di" bpmnElement="Flow_ManualAssign_ToOpen">
+        <di:waypoint x="1220" y="890" />
+        <di:waypoint x="1270" y="890" />
+        <di:waypoint x="1270" y="500" />
+        <di:waypoint x="1320" y="500" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Open_ToG3_di" bpmnElement="Flow_Open_ToG3">
+        <di:waypoint x="1420" y="500" />
+        <di:waypoint x="1520" y="500" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G3_Uncontactable_di" bpmnElement="Flow_G3_Uncontactable">
+        <di:waypoint x="1545" y="475" />
+        <di:waypoint x="1545" y="440" />
+        <di:waypoint x="1370" y="440" />
+        <di:waypoint x="1370" y="460" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G3_Unreachable_di" bpmnElement="Flow_G3_Unreachable">
+        <di:waypoint x="1545" y="475" />
+        <di:waypoint x="1545" y="420" />
+        <di:waypoint x="1350" y="420" />
+        <di:waypoint x="1350" y="460" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G3_NeedConvincing_di" bpmnElement="Flow_G3_NeedConvincing">
+        <di:waypoint x="1545" y="525" />
+        <di:waypoint x="1545" y="560" />
+        <di:waypoint x="1345" y="560" />
+        <di:waypoint x="1345" y="540" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G3_WrongStatus_di" bpmnElement="Flow_G3_WrongStatus">
+        <di:waypoint x="1545" y="525" />
+        <di:waypoint x="1545" y="580" />
+        <di:waypoint x="1365" y="580" />
+        <di:waypoint x="1365" y="540" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G3_CustomerRefused_di" bpmnElement="Flow_G3_CustomerRefused">
+        <di:waypoint x="1570" y="500" />
+        <di:waypoint x="1680" y="500" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G3_RequestApproval_di" bpmnElement="Flow_G3_RequestApproval">
+        <di:waypoint x="1545" y="525" />
+        <di:waypoint x="1545" y="620" />
+        <di:waypoint x="1830" y="620" />
+        <di:waypoint x="1830" y="540" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Select_ToG4_di" bpmnElement="Flow_Select_ToG4">
+        <di:waypoint x="1880" y="500" />
+        <di:waypoint x="1980" y="500" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G4_No_di" bpmnElement="Flow_G4_No">
+        <di:waypoint x="2005" y="475" />
+        <di:waypoint x="2005" y="420" />
+        <di:waypoint x="1830" y="420" />
+        <di:waypoint x="1830" y="460" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G4_Yes_di" bpmnElement="Flow_G4_Yes">
+        <di:waypoint x="2030" y="500" />
+        <di:waypoint x="2230" y="500" />
+        <di:waypoint x="2230" y="150" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AutoCreateApproval_ToAction_di" bpmnElement="Flow_AutoCreateApproval_ToAction">
+        <di:waypoint x="2230" y="150" />
+        <di:waypoint x="2230" y="620" />
+        <di:waypoint x="2380" y="620" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Action_Proceed_di" bpmnElement="Flow_Action_Proceed">
+        <di:waypoint x="2405" y="595" />
+        <di:waypoint x="2405" y="890" />
+        <di:waypoint x="2580" y="890" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Action_Cancel_di" bpmnElement="Flow_Action_Cancel">
+        <di:waypoint x="2430" y="620" />
+        <di:waypoint x="2580" y="620" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Action_Resubmit_di" bpmnElement="Flow_Action_Resubmit">
+        <di:waypoint x="2405" y="645" />
+        <di:waypoint x="2405" y="740" />
+        <di:waypoint x="2580" y="740" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Cancel_ToEnd_di" bpmnElement="Flow_Cancel_ToEnd">
+        <di:waypoint x="2680" y="620" />
+        <di:waypoint x="2780" y="620" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Resubmit_ToSelect_di" bpmnElement="Flow_Resubmit_ToSelect">
+        <di:waypoint x="2630" y="700" />
+        <di:waypoint x="2630" y="660" />
+        <di:waypoint x="1830" y="660" />
+        <di:waypoint x="1830" y="540" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TLReview_ToG5_di" bpmnElement="Flow_TLReview_ToG5">
+        <di:waypoint x="2680" y="890" />
+        <di:waypoint x="2780" y="890" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G5_Reject_di" bpmnElement="Flow_G5_Reject">
+        <di:waypoint x="2805" y="865" />
+        <di:waypoint x="2805" y="820" />
+        <di:waypoint x="2998" y="820" />
+        <di:waypoint x="2998" y="872" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G5_Approve_di" bpmnElement="Flow_G5_Approve">
+        <di:waypoint x="2830" y="890" />
+        <di:waypoint x="2900" y="890" />
+        <di:waypoint x="2900" y="1030" />
+        <di:waypoint x="2980" y="1030" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_QAReview_ToG6_di" bpmnElement="Flow_QAReview_ToG6">
+        <di:waypoint x="3080" y="1030" />
+        <di:waypoint x="3180" y="1030" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G6_Reject_di" bpmnElement="Flow_G6_Reject">
+        <di:waypoint x="3205" y="1005" />
+        <di:waypoint x="3205" y="900" />
+        <di:waypoint x="3016" y="900" />
+        <di:waypoint x="3016" y="872" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G6_Approve_di" bpmnElement="Flow_G6_Approve">
+        <di:waypoint x="3230" y="1030" />
+        <di:waypoint x="3380" y="1030" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G6b_No_di" bpmnElement="Flow_G6b_No">
+        <di:waypoint x="3405" y="1005" />
+        <di:waypoint x="3405" y="110" />
+        <di:waypoint x="4000" y="110" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G6b_Yes_di" bpmnElement="Flow_G6b_Yes">
+        <di:waypoint x="3430" y="1030" />
+        <di:waypoint x="3580" y="1030" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Throw_ToCatch_di" bpmnElement="Flow_Throw_ToCatch">
+        <di:waypoint x="3616" y="1030" />
+        <di:waypoint x="3818" y="1030" />
+        <di:waypoint x="3818" y="128" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Catch_ToCreateSO_di" bpmnElement="Flow_Catch_ToCreateSO">
+        <di:waypoint x="3836" y="110" />
+        <di:waypoint x="4000" y="110" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CreateSO_ToEnd_di" bpmnElement="Flow_CreateSO_ToEnd">
+        <di:waypoint x="4100" y="110" />
+        <di:waypoint x="4200" y="110" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G7_Delivered_di" bpmnElement="Flow_G7_Delivered">
+        <di:waypoint x="970" y="230" />
+        <di:waypoint x="1080" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_G7_Returned_di" bpmnElement="Flow_G7_Returned">
+        <di:waypoint x="945" y="255" />
+        <di:waypoint x="945" y="280" />
+        <di:waypoint x="1238" y="280" />
+        <di:waypoint x="1238" y="248" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TMS_StartToConfirm_di" bpmnElement="Flow_TMS_StartToConfirm">
+        <di:waypoint x="3836" y="1190" />
+        <di:waypoint x="4000" y="1190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TMS_ConfirmToEnd_di" bpmnElement="Flow_TMS_ConfirmToEnd">
+        <di:waypoint x="4100" y="1190" />
+        <di:waypoint x="4200" y="1190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MessageFlow_RequestPayment_di" bpmnElement="MessageFlow_RequestPayment">
+        <di:waypoint x="3598" y="1048" />
+        <di:waypoint x="3598" y="1090" />
+        <di:waypoint x="3818" y="1090" />
+        <di:waypoint x="3818" y="1172" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MessageFlow_PaymentConfirmed_di" bpmnElement="MessageFlow_PaymentConfirmed">
+        <di:waypoint x="4218" y="1172" />
+        <di:waypoint x="4218" y="1095" />
+        <di:waypoint x="3818" y="1095" />
+        <di:waypoint x="3818" y="92" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

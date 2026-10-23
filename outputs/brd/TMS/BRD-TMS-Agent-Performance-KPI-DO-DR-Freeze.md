@@ -281,3 +281,4 @@ Unlike the Realtime tab, the Performance tab's date filter shall allow selection
 | AC12 | CR TM-9010, Acceptance Criteria AC-RT-01, AC-RT-02 |
 | AC13 | CR TM-9010, Acceptance Criteria AC-04 wording; independence of the two tabs' date pickers confirmed by BA/requester on 2026-09-18 |
 | Deferred Items, Open Questions | Current-State Analysis, `outputs/current-state/TMS/CS-TMS-DO-DR-Freeze-at-Finance-Cutoff.md`, as narrowed by requester decisions on 2026-09-18 |
+Writ

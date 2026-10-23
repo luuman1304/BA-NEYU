@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_DepositValidationToBe" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:collaboration id="Collaboration_DepositValidationToBe">
+    <bpmn:participant id="Participant_TMS" name="TMS - Deposit Payment Method Validation (To-Be)" processRef="Process_DepositValidationToBe" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_DepositValidationToBe" name="Deposit Payment Method Validation (To-Be)" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_1">
+      <bpmn:lane id="Lane_Agent" name="Agent">
+        <bpmn:flowNodeRef>StartEvent_1</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SelectDeliveryService</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SelectPaymentMethod</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_EnterDepositAmount</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ApproveCase</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_QA" name="QA">
+        <bpmn:flowNodeRef>Task_ReviewCase</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_UploadEvidence</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_EnterTransactionId</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ClickValidate</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_TMS" name="TMS (System)">
+        <bpmn:flowNodeRef>Task_ProcessApproval</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CheckDuplicateTransactionId</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_TransactionIdUnique</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_ValidationCompleted</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_ValidationBlocked</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_1" name="Agent starts processing a Deposit case">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_SelectDeliveryService" name="Select Delivery Service (Shalom/Olva)">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_SelectPaymentMethod" name="Select Payment Method = Deposit">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_EnterDepositAmount" name="Enter Deposit Amount">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_ApproveCase" name="Approve the case without uploading evidence or entering a Transaction ID">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Task_ProcessApproval" name="Process the approval and make the case available in Validation">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="Task_ReviewCase" name="Review the case in the Validation section">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_UploadEvidence" name="Upload payment evidence">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_EnterTransactionId" name="Enter Transaction ID">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+      <bpmn:outgoing>Flow_9</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="Task_ClickValidate" name="Click Validate">
+      <bpmn:incoming>Flow_9</bpmn:incoming>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="Task_CheckDuplicateTransactionId" name="Check for duplicate Transaction IDs">
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="Gateway_TransactionIdUnique" name="Transaction ID unique?" default="Flow_Unique">
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+      <bpmn:outgoing>Flow_Unique</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Duplicated</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="EndEvent_ValidationCompleted" name="Validation completed">
+      <bpmn:incoming>Flow_Unique</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="EndEvent_ValidationBlocked" name="Validation blocked - duplicate Transaction ID error displayed">
+      <bpmn:incoming>Flow_Duplicated</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_SelectDeliveryService" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_SelectDeliveryService" targetRef="Task_SelectPaymentMethod" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_SelectPaymentMethod" targetRef="Task_EnterDepositAmount" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_EnterDepositAmount" targetRef="Task_ApproveCase" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_ApproveCase" targetRef="Task_ProcessApproval" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_ProcessApproval" targetRef="Task_ReviewCase" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_ReviewCase" targetRef="Task_UploadEvidence" />
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_UploadEvidence" targetRef="Task_EnterTransactionId" />
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Task_EnterTransactionId" targetRef="Task_ClickValidate" />
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="Task_ClickValidate" targetRef="Task_CheckDuplicateTransactionId" />
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="Task_CheckDuplicateTransactionId" targetRef="Gateway_TransactionIdUnique" />
+    <bpmn:sequenceFlow id="Flow_Unique" name="Unique" sourceRef="Gateway_TransactionIdUnique" targetRef="EndEvent_ValidationCompleted" />
+    <bpmn:sequenceFlow id="Flow_Duplicated" name="Duplicated" sourceRef="Gateway_TransactionIdUnique" targetRef="EndEvent_ValidationBlocked">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=transactionIdUnique = false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_DepositValidationToBe">
+      <bpmndi:BPMNShape id="Participant_TMS_di" bpmnElement="Participant_TMS" isHorizontal="true">
+        <dc:Bounds x="120" y="60" width="2140" height="540" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Agent_di" bpmnElement="Lane_Agent" isHorizontal="true">
+        <dc:Bounds x="150" y="60" width="2110" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_QA_di" bpmnElement="Lane_QA" isHorizontal="true">
+        <dc:Bounds x="150" y="220" width="2110" height="160" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_TMS_di" bpmnElement="Lane_TMS" isHorizontal="true">
+        <dc:Bounds x="150" y="380" width="2110" height="220" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="192" y="122" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="170" y="165" width="80" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SelectDeliveryService_di" bpmnElement="Task_SelectDeliveryService">
+        <dc:Bounds x="280" y="100" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SelectPaymentMethod_di" bpmnElement="Task_SelectPaymentMethod">
+        <dc:Bounds x="430" y="100" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_EnterDepositAmount_di" bpmnElement="Task_EnterDepositAmount">
+        <dc:Bounds x="580" y="100" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ApproveCase_di" bpmnElement="Task_ApproveCase">
+        <dc:Bounds x="730" y="100" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ProcessApproval_di" bpmnElement="Task_ProcessApproval">
+        <dc:Bounds x="880" y="420" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReviewCase_di" bpmnElement="Task_ReviewCase">
+        <dc:Bounds x="1030" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_UploadEvidence_di" bpmnElement="Task_UploadEvidence">
+        <dc:Bounds x="1180" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_EnterTransactionId_di" bpmnElement="Task_EnterTransactionId">
+        <dc:Bounds x="1330" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ClickValidate_di" bpmnElement="Task_ClickValidate">
+        <dc:Bounds x="1480" y="260" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CheckDuplicateTransactionId_di" bpmnElement="Task_CheckDuplicateTransactionId">
+        <dc:Bounds x="1630" y="420" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_TransactionIdUnique_di" bpmnElement="Gateway_TransactionIdUnique" isMarkerVisible="true">
+        <dc:Bounds x="1785" y="435" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1763" y="492" width="94" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ValidationCompleted_di" bpmnElement="EndEvent_ValidationCompleted">
+        <dc:Bounds x="1902" y="402" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1880" y="445" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ValidationBlocked_di" bpmnElement="EndEvent_ValidationBlocked">
+        <dc:Bounds x="1902" y="492" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1960" y="480" width="150" height="54" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="228" y="140" />
+        <di:waypoint x="280" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="380" y="140" />
+        <di:waypoint x="430" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="530" y="140" />
+        <di:waypoint x="580" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="680" y="140" />
+        <di:waypoint x="730" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="780" y="180" />
+        <di:waypoint x="780" y="300" />
+        <di:waypoint x="930" y="300" />
+        <di:waypoint x="930" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="930" y="420" />
+        <di:waypoint x="930" y="300" />
+        <di:waypoint x="1030" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1130" y="300" />
+        <di:waypoint x="1180" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="1280" y="300" />
+        <di:waypoint x="1330" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_9_di" bpmnElement="Flow_9">
+        <di:waypoint x="1430" y="300" />
+        <di:waypoint x="1480" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_10_di" bpmnElement="Flow_10">
+        <di:waypoint x="1580" y="300" />
+        <di:waypoint x="1680" y="300" />
+        <di:waypoint x="1680" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_11_di" bpmnElement="Flow_11">
+        <di:waypoint x="1730" y="460" />
+        <di:waypoint x="1785" y="460" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Unique_di" bpmnElement="Flow_Unique">
+        <di:waypoint x="1835" y="453" />
+        <di:waypoint x="1870" y="420" />
+        <di:waypoint x="1902" y="420" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1853" y="410" width="36" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Duplicated_di" bpmnElement="Flow_Duplicated">
+        <di:waypoint x="1835" y="467" />
+        <di:waypoint x="1870" y="510" />
+        <di:waypoint x="1902" y="510" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1845" y="520" width="58" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
